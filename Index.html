@@ -1,0 +1,369 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Disbursement List Search</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Public+Sans:wght@400;500;600;700&display=swap">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<style>
+:root{--bg:#f2f5f4;--surf:#fff;--ink:#14201c;--mute:#5c6b66;--line:#d9e1de;--acc:#0f6b5c;--acc2:#e3f1ee;--warn:#b7791f;--bad:#b4402f;--good:#2f7d4f;--hl:#fff1b8;
+box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#0f1715;--surf:#17211e;--ink:#e6efec;--mute:#93a49e;--line:#2a3833;--acc:#4fc3ad;--acc2:#1b2f2a;--warn:#e0a74a;--bad:#ea8272;--good:#6cc58d;--hl:#5a4c14}}
+:root[data-theme="dark"]{--bg:#0f1715;--surf:#17211e;--ink:#e6efec;--mute:#93a49e;--line:#2a3833;--acc:#4fc3ad;--acc2:#1b2f2a;--warn:#e0a74a;--bad:#ea8272;--good:#6cc58d;--hl:#5a4c14}
+*{box-sizing:border-box}
+html{scroll-padding-top:env(safe-area-inset-top,0px)}
+body{margin:0;background:var(--bg);color:var(--ink);font:15px/1.5 "Public Sans",system-ui,-apple-system,"Segoe UI",sans-serif;font-variant-numeric:tabular-nums}
+.wrap{max-width:1180px;margin:0 auto;padding:20px 16px 48px}
+h1{font-size:22px;margin:0;font-weight:700;letter-spacing:-.01em}
+.sub{color:var(--mute);margin:2px 0 0;font-size:13px}
+header{display:flex;justify-content:space-between;align-items:flex-start;gap:12px;margin-bottom:16px;flex-wrap:wrap}
+button{font:inherit;cursor:pointer}
+.btn{background:var(--surf);color:var(--ink);border:1px solid var(--line);border-radius:8px;padding:7px 12px;font-size:13px;font-weight:500}
+.btn:hover{border-color:var(--acc)}
+.btn.pri{background:var(--acc);color:var(--surf);border-color:var(--acc)}
+:focus-visible{outline:2px solid var(--acc);outline-offset:2px}
+#drop{border:2px dashed var(--line);background:var(--surf);border-radius:14px;padding:44px 20px;text-align:center;transition:border-color .15s,background .15s}
+#drop.over{border-color:var(--acc);background:var(--acc2)}
+#drop h2{margin:0 0 6px;font-size:18px}
+#drop p{margin:0 0 16px;color:var(--mute)}
+#err{color:var(--bad);margin-top:12px;font-size:13px;min-height:1em}
+#app{display:none}
+.kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:10px;margin-bottom:12px}
+.kpi{background:var(--surf);border:1px solid var(--line);border-radius:10px;padding:12px 14px}
+.kpi b{display:block;font-size:22px;letter-spacing:-.01em;margin-top:2px}
+.kpi span{color:var(--mute);font-size:12.5px}
+.kpi.diff b.neg{color:var(--bad)}.kpi.diff b.pos{color:var(--good)}
+.charts{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:10px;margin-bottom:16px}
+.card{background:var(--surf);border:1px solid var(--line);border-radius:10px;padding:12px 14px}
+.card h3{margin:0 0 8px;font-size:13.5px;font-weight:600}
+.bar{display:grid;grid-template-columns:86px 1fr auto;gap:8px;align-items:center;width:100%;background:none;border:0;padding:4px 0;color:inherit;text-align:left;border-radius:6px}
+.bar:hover{background:var(--acc2)}
+.bar.on{background:var(--acc2);outline:1px solid var(--acc)}
+.bar .t{height:9px;background:var(--line);border-radius:5px;overflow:hidden}
+.bar .t i{display:block;height:100%;background:var(--acc);border-radius:5px}
+.bar .n{font-size:12.5px;color:var(--mute);min-width:44px;text-align:right}
+.bar .l{font-size:13px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.searchrow{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:10px;align-items:center}
+.sbox{position:relative;flex:1 1 320px}
+#q{width:100%;font:inherit;font-size:16px;padding:12px 14px 12px 14px;border:1px solid var(--line);border-radius:10px;background:var(--surf);color:var(--ink)}
+#q:focus{outline:2px solid var(--acc);border-color:var(--acc)}
+#sug{position:absolute;left:0;right:0;top:calc(100% + 4px);background:var(--surf);border:1px solid var(--line);border-radius:10px;box-shadow:0 8px 24px rgba(0,0,0,.14);z-index:20;max-height:360px;overflow:auto;display:none}
+.s{display:flex;justify-content:space-between;gap:10px;padding:9px 14px;cursor:pointer;border-bottom:1px solid var(--line)}
+.s:last-child{border-bottom:0}
+.s.act,.s:hover{background:var(--acc2)}
+.s small{color:var(--mute);display:block;font-size:12px}
+.s .r{text-align:right;font-size:12.5px;color:var(--mute);white-space:nowrap}
+mark{background:var(--hl);color:inherit;border-radius:3px;padding:0 1px}
+select{font:inherit;font-size:14px;padding:11px 10px;border:1px solid var(--line);border-radius:10px;background:var(--surf);color:var(--ink)}
+.lab{display:flex;align-items:center;gap:6px;font-size:13px;color:var(--mute)}
+.meta{display:flex;justify-content:space-between;color:var(--mute);font-size:13px;margin:6px 0;flex-wrap:wrap;gap:8px}
+.tw{overflow-x:auto;background:var(--surf);border:1px solid var(--line);border-radius:10px}
+table{border-collapse:collapse;width:100%;min-width:760px}
+th,td{padding:9px 12px;text-align:left;border-bottom:1px solid var(--line);font-size:13.5px;vertical-align:top}
+th{position:sticky;top:0;background:var(--surf);font-weight:600;cursor:pointer;white-space:nowrap;user-select:none}
+th.num,td.num{text-align:right}
+tr:last-child td{border-bottom:0}
+tbody tr:hover{background:var(--acc2)}
+.pill{display:inline-block;padding:1px 9px;border-radius:99px;font-size:12px;font-weight:600;border:1px solid currentColor}
+.pill.Continue{color:var(--good)}.pill.Closed{color:var(--bad)}.pill.Decreased{color:var(--warn)}.pill.Increased{color:var(--acc)}.pill.Other{color:var(--mute)}
+.pager{display:flex;gap:8px;justify-content:center;align-items:center;margin-top:12px;font-size:13px;color:var(--mute)}
+.empty{padding:28px;text-align:center;color:var(--mute)}
+.tabs{display:flex;gap:6px;margin-bottom:14px;border-bottom:1px solid var(--line)}
+.tab{background:none;border:0;border-bottom:3px solid transparent;padding:9px 14px;font-weight:600;color:var(--mute);margin-bottom:-1px}
+.tab.on{color:var(--acc);border-color:var(--acc)}
+.selbar{display:flex;gap:8px;flex-wrap:wrap;margin:10px 0}
+#paste{width:100%;min-height:70px;font:inherit;font-size:14px;padding:10px;border:1px solid var(--line);border-radius:10px;background:var(--surf);color:var(--ink)}
+.rk,#all{width:17px;height:17px;accent-color:var(--acc)}
+.pbox{margin:12px 0}
+.pbox .sub{margin:6px 0 0}
+.small{padding:3px 9px;font-size:12px}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <div>
+      <h1>Disbursement list search</h1>
+      <p class="sub" id="file">Upload your Excel list to search and analyse it. Everything stays in your browser.</p>
+    </div>
+    <div id="hbtn" style="display:none;gap:8px;flex-wrap:wrap">
+      <label class="lab"><input type="checkbox" id="mask"> Hide CNIC &amp; mobile</label>
+      <button class="btn" id="csv">Download results (CSV)</button>
+      <button class="btn pri" id="swap">Upload another file</button>
+    </div>
+  </header>
+
+  <section id="drop">
+    <h2>Drop an Excel file here</h2>
+    <p>.xlsx, .xls or .csv — the header row is found automatically</p>
+    <button class="btn pri" id="pick">Choose file</button>
+    <input type="file" id="fi" accept=".xlsx,.xls,.xlsm,.csv" hidden>
+    <div id="err" role="alert"></div>
+  </section>
+
+  <main id="app">
+    <div class="tabs" role="tablist"><button class="tab on" id="tS" role="tab">Search &amp; dashboard</button><button class="tab" id="tC" role="tab">Selected cases (<span id="selN">0</span>)</button></div>
+    <div id="pSearch">
+    <div class="kpis" id="kpis"></div>
+    <div class="charts">
+      <div class="card"><h3>By category</h3><div id="cCat"></div></div>
+      <div class="card"><h3>By status</h3><div id="cSt"></div></div>
+      <div class="card"><h3>By amount slab</h3><div id="cAm"></div></div>
+    </div>
+
+    <div class="searchrow">
+      <div class="sbox">
+        <input id="q" type="search" placeholder="Search name, ID, mobile or CNIC" autocomplete="off" role="combobox" aria-expanded="false" aria-controls="sug">
+        <div id="sug" role="listbox"></div>
+      </div>
+      <select id="fCat" aria-label="Category"></select>
+      <select id="fSt" aria-label="Status"></select>
+      <button class="btn" id="clr">Clear filters</button>
+    </div>
+    <div class="meta"><span id="count"></span><span><button class="btn small" id="selAll">Select all results</button> <button class="btn small" id="selNone">Deselect results</button></span></div>
+    <div class="tw"><table><thead id="th"></thead><tbody id="tb"></tbody></table></div>
+    <div class="pager" id="pg"></div>
+    </div>
+    <div id="pSel" style="display:none">
+      <div class="kpis" id="sKpis"></div>
+      <div class="sub" id="sCat"></div>
+      <div class="pbox"><textarea id="paste" placeholder="Paste IDs, CNICs or mobile numbers here (one per line or comma separated) to select many cases at once"></textarea><div class="selbar"><button class="btn pri" id="pasteGo">Select these cases</button></div><p class="sub" id="pasteMsg"></p></div>
+      <div class="selbar"><button class="btn" id="sCsv">Download CSV</button><button class="btn" id="sXls">Download Excel</button><button class="btn" id="sClr">Clear selection</button></div>
+      <div class="tw"><table><thead id="sth"></thead><tbody id="stb"></tbody></table></div>
+    </div>
+  </main>
+</div>
+
+<script>
+(function(){
+var $=function(s){return document.getElementById(s)};
+var ALL=[],VIEW=[],page=0,PS=50,sortK='sr',sortD=1,sel=-1,sugList=[];
+var F={cat:'',st:'',slab:''};
+var SLABS=[['Up to 3,000',0,3000],['3,001 – 5,000',3001,5000],['5,001 – 10,000',5001,10000],['Above 10,000',10001,1e12]];
+var COLS=[['sr','Sr.'],['id','ID'],['cat','Category'],['name','Name'],['mobile','Mobile'],['cnic','CNIC'],['amt','Amount (Rs.)'],['rev','Revised (Rs.)'],['st','Status']];
+var fmt=function(n){return Math.round(n).toLocaleString('en-PK')};
+var esc=function(s){return String(s).replace(/[&<>"]/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]})};
+var clean=function(v){return String(v==null?'':v).replace(/\s+/g,' ').trim()};
+var norm=function(s){return clean(s).toLowerCase()};
+var digits=function(s){return String(s).replace(/\D/g,'')};
+var tcase=function(s){s=clean(s);return s?s.charAt(0).toUpperCase()+s.slice(1).toLowerCase():''};
+var num=function(v){if(typeof v==='number')return v;var n=parseFloat(String(v).replace(/[^0-9.\-]/g,''));return isNaN(n)?null:n};
+
+/* ---------- load ---------- */
+function load(file){
+  $('err').textContent='';
+  var r=new FileReader();
+  r.onerror=function(){$('err').textContent='The file could not be read. Try saving it again and re-uploading.'};
+  r.onload=function(e){
+    try{
+      var wb=XLSX.read(new Uint8Array(e.target.result),{type:'array'});
+      var rows=[],sheet='';
+      for(var i=0;i<wb.SheetNames.length&&!rows.length;i++){
+        sheet=wb.SheetNames[i];
+        rows=parse(XLSX.utils.sheet_to_json(wb.Sheets[sheet],{header:1,defval:'',raw:true}));
+      }
+      if(!rows.length){$('err').textContent='No list found. The sheet needs a header row with at least Name and Amount columns.';return}
+      ALL=rows;start(file.name.trim(),sheet.trim());
+    }catch(x){$('err').textContent='This file could not be opened as a spreadsheet.'}
+  };
+  r.readAsArrayBuffer(file);
+}
+function parse(g){
+  var h=-1,map={};
+  for(var i=0;i<Math.min(g.length,60);i++){
+    var m=mapHeader(g[i]);
+    if(m.name!=null&&(m.amt!=null||m.cnic!=null||m.id!=null)){h=i;map=m;break}
+  }
+  if(h<0)return[];
+  var out=[];
+  for(var j=h+1;j<g.length;j++){
+    var r=g[j],name=clean(r[map.name]);
+    var id=map.id!=null?clean(r[map.id]):'';
+    if(!name||(map.id!=null&&!id))continue; /* skips totals & blank rows */
+    var amt=map.amt!=null?num(r[map.amt]):null,rev=map.rev!=null?num(r[map.rev]):null;
+    if(rev==null)rev=amt;
+    var st=map.st!=null?tcase(r[map.st]):'';
+    if(!st||/^=|^#/.test(st)){st=rev===0?'Closed':(amt==null||rev===amt)?'Continue':rev>amt?'Increased':'Decreased'}
+    out.push({sr:out.length+1,id:id,cat:map.cat!=null?tcase(r[map.cat])||'Uncategorised':'Uncategorised',name:name,
+      mobile:map.mobile!=null?clean(r[map.mobile]):'',cnic:map.cnic!=null?clean(r[map.cnic]):'',amt:amt||0,rev:rev||0,st:st});
+  }
+  out.forEach(function(o){o.hay=norm(o.name+' '+o.id+' '+o.cat+' '+o.mobile+' '+o.cnic)+' '+digits(o.mobile)+' '+digits(o.cnic)});
+  return out;
+}
+function mapHeader(r){
+  var m={};
+  r.forEach(function(c,i){
+    var t=norm(c);if(!t)return;
+    if(/^(sr|s\.?no|serial)/.test(t))m.sr=i;
+    else if(/^id$|^id\b|code/.test(t)&&m.id==null)m.id=i;
+    else if(/categ|type/.test(t))m.cat=i;
+    else if(/^name|beneficiar/.test(t)&&m.name==null)m.name=i;
+    else if(/mobile|phone|contact|cell/.test(t))m.mobile=i;
+    else if(/cnic|nic/.test(t))m.cnic=i;
+    else if(/revis/.test(t))m.rev=i;
+    else if(/amount|rs/.test(t)&&m.amt==null)m.amt=i;
+    else if(/status/.test(t))m.st=i;
+  });
+  return m;
+}
+function start(fn,sheet){
+  $('drop').style.display='none';$('app').style.display='block';$('hbtn').style.display='flex';
+  $('file').textContent=fn+(sheet?' · sheet “'+sheet+'”':'')+' · '+ALL.length.toLocaleString()+' records';
+  fillSel('fCat','All categories',uniq('cat'));fillSel('fSt','All statuses',uniq('st'));
+  F={cat:'',st:'',slab:''};$('q').value='';sortK='sr';sortD=1;apply();
+}
+function uniq(k){var c={};ALL.forEach(function(o){c[o[k]]=(c[o[k]]||0)+1});return Object.keys(c).sort(function(a,b){return c[b]-c[a]})}
+function fillSel(id,all,list){$(id).innerHTML='<option value="">'+all+'</option>'+list.map(function(v){return '<option>'+esc(v)+'</option>'}).join('')}
+
+/* ---------- filter + render ---------- */
+function terms(){return norm($('q').value).split(' ').filter(Boolean)}
+function match(o,t){for(var i=0;i<t.length;i++){if(o.hay.indexOf(t[i])<0&&!(/^\d/.test(t[i])&&o.hay.indexOf(digits(t[i]))>=0&&digits(t[i]).length>2))return false}return true}
+function inSlab(o){if(!F.slab)return true;var s=SLABS.filter(function(x){return x[0]===F.slab})[0];return o.rev>=s[1]&&o.rev<=s[2]}
+function apply(){
+  var t=terms();
+  VIEW=ALL.filter(function(o){return(!F.cat||o.cat===F.cat)&&(!F.st||o.st===F.st)&&inSlab(o)&&match(o,t)});
+  VIEW.sort(function(a,b){var x=a[sortK],y=b[sortK];return(typeof x==='number'?x-y:String(x).localeCompare(String(y),undefined,{numeric:true}))*sortD});
+  page=0;render();
+}
+function render(){
+  dash();
+  var t=terms(),mask=$('mask').checked;
+  $('count').textContent=VIEW.length.toLocaleString()+' of '+ALL.length.toLocaleString()+' records';
+  $('th').innerHTML='<tr><th><input type="checkbox" id="all" aria-label="Select all on this page"></th>'+COLS.map(function(c){var n=c[0]==='amt'||c[0]==='rev';return '<th class="'+(n?'num':'')+'" data-k="'+c[0]+'" aria-sort="'+(sortK===c[0]?(sortD>0?'ascending':'descending'):'none')+'">'+c[1]+(sortK===c[0]?(sortD>0?' ▲':' ▼'):'')+'</th>'}).join('')+'</tr>';
+  var s=VIEW.slice(page*PS,page*PS+PS);
+  $('tb').innerHTML=s.length?s.map(function(o){
+    return '<tr><td><input type="checkbox" class="rk" data-id="'+esc(o.id)+'"'+(SEL[o.id]?' checked':'')+' aria-label="Select case"></td><td>'+o.sr+'</td><td>'+hl(o.id,t)+'</td><td>'+esc(o.cat)+'</td><td>'+hl(o.name,t)+'</td><td>'+(mask?mk(o.mobile,4):hl(o.mobile,t))+'</td><td>'+(mask?mk(o.cnic,4):hl(o.cnic,t))+'</td><td class="num">'+fmt(o.amt)+'</td><td class="num">'+fmt(o.rev)+'</td><td><span class="pill '+(['Continue','Closed','Decreased','Increased'].indexOf(o.st)>=0?o.st:'Other')+'">'+esc(o.st)+'</span></td></tr>'}).join('')
+    :'<tr><td colspan="10" class="empty">No records match. Try fewer words or clear the filters.</td></tr>';
+  updBadge();var pages=Math.max(1,Math.ceil(VIEW.length/PS));
+  $('pg').innerHTML=pages>1?'<button class="btn" id="pv"'+(page?'':' disabled')+'>Previous</button><span>Page '+(page+1)+' of '+pages+'</span><button class="btn" id="nx"'+(page<pages-1?'':' disabled')+'>Next</button>':'';
+}
+function mk(s,k){s=String(s);return s.length>k?esc('•'.repeat(s.length-k)+s.slice(-k)):esc(s)}
+function hl(s,t){s=String(s);if(!t.length)return esc(s);
+  var re=new RegExp('('+t.map(function(x){return esc(x).replace(/[.*+?^${}()|[\]\\]/g,'\\$&')}).join('|')+')','gi');
+  return esc(s).replace(re,'<mark>$1</mark>')}
+
+/* ---------- mini dashboard ---------- */
+function dash(){
+  var n=VIEW.length,a=0,r=0;VIEW.forEach(function(o){a+=o.amt;r+=o.rev});
+  var d=r-a,avg=n?r/n:0;
+  $('kpis').innerHTML=
+   k('Records shown',n.toLocaleString())+k('Original amount','Rs. '+fmt(a))+k('Revised amount','Rs. '+fmt(r))+
+   '<div class="kpi diff"><span>Change after revision</span><b class="'+(d<0?'neg':d>0?'pos':'')+'">'+(d>0?'+':d<0?'−':'')+'Rs. '+fmt(Math.abs(d))+'</b></div>'+k('Average revised','Rs. '+fmt(avg));
+  bars('cCat',group(ALL.filter(function(o){return(!F.st||o.st===F.st)&&inSlab(o)&&match(o,terms())}),'cat'),'cat');
+  bars('cSt',group(ALL.filter(function(o){return(!F.cat||o.cat===F.cat)&&inSlab(o)&&match(o,terms())}),'st'),'st');
+  var base=ALL.filter(function(o){return(!F.cat||o.cat===F.cat)&&(!F.st||o.st===F.st)&&match(o,terms())});
+  bars('cAm',SLABS.map(function(s){var c=0,t=0;base.forEach(function(o){if(o.rev>=s[1]&&o.rev<=s[2]){c++;t+=o.rev}});return[s[0],c,t]}),'slab');
+}
+function k(l,v){return '<div class="kpi"><span>'+l+'</span><b>'+v+'</b></div>'}
+function group(list,key){var c={};list.forEach(function(o){var g=c[o[key]]||(c[o[key]]=[o[key],0,0]);g[1]++;g[2]+=o.rev});return Object.keys(c).map(function(x){return c[x]}).sort(function(a,b){return b[1]-a[1]})}
+function bars(id,rows,key){
+  var mx=Math.max.apply(null,rows.map(function(r){return r[1]}).concat([1]));
+  $(id).innerHTML=rows.length?rows.map(function(r){
+    return '<button class="bar'+(F[key]===r[0]?' on':'')+'" data-key="'+key+'" data-v="'+esc(r[0])+'" title="Rs. '+fmt(r[2])+'"><span class="l">'+esc(r[0])+'</span><span class="t"><i style="width:'+(r[1]/mx*100)+'%"></i></span><span class="n">'+r[1].toLocaleString()+'</span></button>'}).join(''):'<div class="sub">No data</div>';
+}
+
+/* ---------- suggestions ---------- */
+function suggest(){
+  var t=terms(),box=$('sug');sel=-1;
+  if(!t.length){box.style.display='none';$('q').setAttribute('aria-expanded','false');return}
+  sugList=ALL.filter(function(o){return match(o,t)}).slice(0,8);
+  if(!sugList.length){box.innerHTML='<div class="s"><span>No suggestions — try a different spelling or digits only</span></div>'}
+  else box.innerHTML=sugList.map(function(o,i){
+    return '<div class="s" role="option" data-i="'+i+'"><span>'+hl(o.name,t)+'<small>'+hl(o.id,t)+' · '+esc(o.cat)+' · '+hl(o.mobile,t)+'</small></span><span class="r">Rs. '+fmt(o.rev)+'<br>'+esc(o.st)+'</span></div>'}).join('');
+  box.style.display='block';$('q').setAttribute('aria-expanded','true');
+}
+function pickSug(i){var o=sugList[i];if(!o)return;$('q').value=o.name;$('sug').style.display='none';apply()}
+function mark(){[].forEach.call($('sug').querySelectorAll('.s'),function(e,i){e.classList.toggle('act',i===sel)})}
+
+/* ---------- events ---------- */
+$('pick').onclick=function(){$('fi').click()};
+$('swap').onclick=function(){$('fi').value='';$('fi').click()};
+$('fi').onchange=function(e){if(e.target.files[0])load(e.target.files[0])};
+var dz=$('drop');
+['dragenter','dragover'].forEach(function(n){document.addEventListener(n,function(e){e.preventDefault();dz.classList.add('over')})});
+['dragleave','drop'].forEach(function(n){document.addEventListener(n,function(e){e.preventDefault();dz.classList.remove('over')})});
+document.addEventListener('drop',function(e){var f=e.dataTransfer&&e.dataTransfer.files[0];if(f)load(f)});
+$('q').oninput=function(){suggest();apply()};
+$('q').onfocus=suggest;
+$('q').onkeydown=function(e){
+  var open=$('sug').style.display==='block'&&sugList.length;
+  if(e.key==='ArrowDown'&&open){e.preventDefault();sel=(sel+1)%sugList.length;mark()}
+  else if(e.key==='ArrowUp'&&open){e.preventDefault();sel=(sel-1+sugList.length)%sugList.length;mark()}
+  else if(e.key==='Enter'){if(open&&sel>=0)pickSug(sel);else $('sug').style.display='none'}
+  else if(e.key==='Escape')$('sug').style.display='none';
+};
+$('sug').onmousedown=function(e){var s=e.target.closest('.s');if(s&&s.dataset.i)pickSug(+s.dataset.i)};
+document.addEventListener('click',function(e){if(!e.target.closest('.sbox'))$('sug').style.display='none'});
+$('fCat').onchange=function(){F.cat=this.value;apply()};
+$('fSt').onchange=function(){F.st=this.value;apply()};
+$('clr').onclick=function(){F={cat:'',st:'',slab:''};$('q').value='';$('fCat').value='';$('fSt').value='';apply()};
+$('mask').onchange=render;
+$('app').addEventListener('click',function(e){
+  var b=e.target.closest('.bar');
+  if(b){var key=b.dataset.key,v=b.dataset.v;F[key]=F[key]===v?'':v;if(key==='cat')$('fCat').value=F.cat;if(key==='st')$('fSt').value=F.st;apply();return}
+  var th=e.target.closest('th');
+  if(th&&th.dataset.k){var kk=th.dataset.k;sortD=sortK===kk?-sortD:1;sortK=kk;apply();return}
+  if(e.target.id==='pv'){page--;render();window.scrollTo(0,$('th').getBoundingClientRect().top+scrollY-80)}
+  if(e.target.id==='nx'){page++;render();window.scrollTo(0,$('th').getBoundingClientRect().top+scrollY-80)}
+});
+$('csv').onclick=function(){
+  var q=function(v){return '"'+String(v).replace(/"/g,'""')+'"'};
+  var lines=[COLS.map(function(c){return q(c[1])}).join(',')].concat(VIEW.map(function(o){return COLS.map(function(c){return q(o[c[0]])}).join(',')}));
+  saveFile('search-results.csv','\ufeff'+lines.join('\n'));
+};
+/* ---------- selected cases ---------- */
+var SEL={};try{SEL=JSON.parse(localStorage.getItem('otcSel')||'{}')}catch(e){}
+function saveSel(){try{localStorage.setItem('otcSel',JSON.stringify(SEL))}catch(e){}}
+function selRows(){return ALL.filter(function(o){return SEL[o.id]})}
+function updBadge(){
+  $('selN').textContent=selRows().length;
+  var a=$('all');if(a){var s=VIEW.slice(page*PS,page*PS+PS);a.checked=s.length>0&&s.every(function(o){return SEL[o.id]})}
+}
+function showTab(sel){
+  $('pSearch').style.display=sel?'none':'block';$('pSel').style.display=sel?'block':'none';
+  $('tS').classList.toggle('on',!sel);$('tC').classList.toggle('on',sel);
+  if(sel)renderSel();else render();
+}
+function renderSel(){
+  var R=selRows(),a=0,r=0,mask=$('mask').checked;R.forEach(function(o){a+=o.amt;r+=o.rev});
+  $('sKpis').innerHTML=k('Cases selected',R.length.toLocaleString())+k('Original amount','Rs. '+fmt(a))+k('Revised amount','Rs. '+fmt(r))+k('Average revised','Rs. '+fmt(R.length?r/R.length:0));
+  $('sCat').textContent=group(R,'cat').map(function(x){return x[0]+': '+x[1]+' (Rs. '+fmt(x[2])+')'}).join('  ·  ');
+  $('sth').innerHTML='<tr><th>ID</th><th>Category</th><th>Name</th><th>Mobile</th><th>CNIC</th><th class="num">Amount</th><th class="num">Revised</th><th>Status</th><th></th></tr>';
+  $('stb').innerHTML=R.length?R.map(function(o){return '<tr><td>'+esc(o.id)+'</td><td>'+esc(o.cat)+'</td><td>'+esc(o.name)+'</td><td>'+(mask?mk(o.mobile,4):esc(o.mobile))+'</td><td>'+(mask?mk(o.cnic,4):esc(o.cnic))+'</td><td class="num">'+fmt(o.amt)+'</td><td class="num">'+fmt(o.rev)+'</td><td><span class="pill '+(['Continue','Closed','Decreased','Increased'].indexOf(o.st)>=0?o.st:'Other')+'">'+esc(o.st)+'</span></td><td><button class="btn small" data-rm="'+esc(o.id)+'">Remove</button></td></tr>'}).join(''):'<tr><td colspan="9" class="empty">No cases selected yet. Tick rows in the Search tab, or paste IDs above.</td></tr>';
+  updBadge();
+}
+function saveFile(name,data){
+  var fallback=function(){var a=document.createElement('a');a.href=URL.createObjectURL(data instanceof Blob?data:new Blob([data]));a.download=name;a.click()};
+  if(window.claude&&window.claude.use){window.claude.use('downloads').then(function(d){if(d){d.save({filename:name,data:data}).catch(function(){})}else fallback()},fallback)}else fallback();
+}
+function toRows(list){return list.map(function(o){return {'Sr.':o.sr,'ID':o.id,'Category':o.cat,'Name':o.name,'Mobile':o.mobile,'CNIC':o.cnic,'Amount (Rs.)':o.amt,'Revised (Rs.)':o.rev,'Status':o.st}})}
+function toCsv(list){var rows=toRows(list),h=Object.keys(rows[0]||{}),q=function(v){return '"'+String(v).replace(/"/g,'""')+'"'};return '\ufeff'+[h.map(q).join(',')].concat(rows.map(function(r){return h.map(function(c){return q(r[c])}).join(',')})).join('\n')}
+$('tS').onclick=function(){showTab(false)};
+$('tC').onclick=function(){showTab(true)};
+$('app').addEventListener('change',function(e){
+  var t=e.target;
+  if(t.classList.contains('rk')){var id=t.dataset.id;if(t.checked)SEL[id]=1;else delete SEL[id];saveSel();updBadge()}
+  else if(t.id==='all'){VIEW.slice(page*PS,page*PS+PS).forEach(function(o){if(t.checked)SEL[o.id]=1;else delete SEL[o.id]});saveSel();render()}
+});
+$('selAll').onclick=function(){VIEW.forEach(function(o){SEL[o.id]=1});saveSel();render()};
+$('selNone').onclick=function(){VIEW.forEach(function(o){delete SEL[o.id]});saveSel();render()};
+$('stb').onclick=function(e){var b=e.target.closest('[data-rm]');if(b){delete SEL[b.dataset.rm];saveSel();renderSel()}};
+$('sClr').onclick=function(){if(!selRows().length)return;if(confirm('Remove all selected cases?')){SEL={};saveSel();renderSel()}};
+$('sCsv').onclick=function(){var R=selRows();if(R.length)saveFile('selected-cases.csv',toCsv(R))};
+$('sXls').onclick=function(){var R=selRows();if(!R.length)return;var wb=XLSX.utils.book_new();XLSX.utils.book_append_sheet(wb,XLSX.utils.json_to_sheet(toRows(R)),'Selected');saveFile('selected-cases.xlsx',new Uint8Array(XLSX.write(wb,{type:'array',bookType:'xlsx'})))};
+$('mask').addEventListener('change',function(){if($('pSel').style.display==='block')renderSel()});
+$('pasteGo').onclick=function(){
+  var tk=$('paste').value.split(/[\s,;]+/).filter(Boolean),found=0,miss=[];
+  tk.forEach(function(x){
+    var lx=x.toLowerCase(),dx=digits(x),hit=ALL.filter(function(o){return o.id.toLowerCase()===lx||(dx.length>=10&&(digits(o.cnic)===dx||digits(o.mobile)===dx))});
+    if(hit.length){hit.forEach(function(o){SEL[o.id]=1});found++}else miss.push(x);
+  });
+  saveSel();renderSel();
+  $('pasteMsg').textContent=tk.length?(found+' of '+tk.length+' matched and selected.'+(miss.length?' Not found: '+miss.slice(0,10).join(', ')+(miss.length>10?' and '+(miss.length-10)+' more':'')+'.':'')):'Paste at least one ID, CNIC or mobile number.';
+  if(!miss.length)$('paste').value='';
+};
+})();
+</script>
+</body>
+</html>
